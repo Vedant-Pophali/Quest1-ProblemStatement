@@ -9,7 +9,7 @@ logger = logging.getLogger(__name__)
 logger.info("Loading RapidOCR ONNX model...")
 ocr = RapidOCR()
 
-def analyze_frame_text(image_path: str, target_text: str, fuzzy_threshold: int = 80) -> dict:
+def analyze_frame_text(image_path: str, target_text: str, fuzzy_threshold: int = 85) -> dict:
     """
     Cleans the image, runs RapidOCR, and fuzzy matches against the target.
     Returns a dictionary containing bounding boxes, extracted text, and confidence,

@@ -8,7 +8,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.UUID;
-import java.util.concurrent.Executors;
 
 public class JobController {
     private static final Logger log = LoggerFactory.getLogger(JobController.class);
@@ -37,11 +36,16 @@ public class JobController {
 
     private void processJob(String jobId, String targetUrl, String targetText) {
         try {
+            // Give the frontend EventSource 1.5 seconds to establish the connection 
+            // before we start sending live updates.
+            Thread.sleep(1500);
+
             liveUpdateSender.sendUpdate(jobId, "INITIALIZING", "Extracting raw stream URL from " + targetUrl);
             String rawUrl = fFmpegAdapter.extractRawStreamUrl(targetUrl);
             
-            // In a real implementation, you'd use ffprobe to get exact duration and FPS here
-            StreamMetadata metadata = new StreamMetadata(rawUrl, 24.0, 3600.0, null);
+            liveUpdateSender.sendUpdate(jobId, "INITIALIZING", "Fetching stream metadata via ffprobe...");
+            // Dynamically fetch exact duration and FPS to prevent FFmpeg phantom frames
+            StreamMetadata metadata = fFmpegAdapter.getMetadata(rawUrl);
             
             liveUpdateSender.sendUpdate(jobId, "AUDIO_SEARCH_RUNNING", "Launching Audio Pointer and Coarse Visual Scan...");
             

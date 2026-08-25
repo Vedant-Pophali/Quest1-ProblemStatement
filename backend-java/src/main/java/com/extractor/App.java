@@ -10,6 +10,7 @@ import com.extractor.infrastructure.FFmpegAdapter;
 import com.extractor.infrastructure.PythonOcrClient;
 import com.extractor.model.FrameResult;
 import io.javalin.Javalin;
+import io.javalin.http.staticfiles.Location;
 
 import java.util.Optional;
 
@@ -43,7 +44,7 @@ public class App {
 
         // 5. Start Lightweight Web Server on Virtual Threads
         Javalin app = Javalin.create(config -> {
-            config.staticFiles.add("/frontend"); // Serve your HTML/JS from here
+            config.staticFiles.add("frontend", Location.EXTERNAL); 
         }).start(7070);
 
         // 6. Define Routes
@@ -52,6 +53,7 @@ public class App {
         // SSE Endpoint
         app.sse("/api/jobs/{id}/stream", client -> {
             String jobId = client.ctx().pathParam("id");
+            client.keepAlive(); 
             liveUpdateSender.addClient(jobId, client);
         });
         

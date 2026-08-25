@@ -46,17 +46,47 @@ document.getElementById('extraction-form').addEventListener('submit', async (e) 
                 submitBtn.disabled = false;
                 
                 if (payload.state === 'SUCCESS') {
-                    // Extract data from the message or make a final fetch call depending on backend structure
-                    document.getElementById('res-timestamp').textContent = payload.message.split('! ')[1] || "Check logs";
-                    document.getElementById('res-frame').textContent = "Calculated by timestamp";
+                    const timestampStr = payload.message.split('! ')[1] || "00:00:00.000";
+                    
+                    // Display the timestamp
+                    document.getElementById('res-timestamp').textContent = timestampStr;
+                    
+                    // Calculate the exact frame number
+                    // Formula: (Hours * 3600 + Minutes * 60 + Seconds) * FPS
+                    let totalSeconds = 0;
+                    
+                    // Handle HH:MM:SS.sss format if present
+                    if (timestampStr.includes(':')) {
+                        const parts = timestampStr.split(':');
+                        const hours = parseInt(parts[0]) || 0;
+                        const minutes = parseInt(parts[1]) || 0;
+                        const seconds = parseFloat(parts[2]) || 0;
+                        totalSeconds = (hours * 3600) + (minutes * 60) + seconds;
+                    } else {
+                        // Handle raw seconds if the backend passed a float
+                        totalSeconds = parseFloat(timestampStr) || 0;
+                    }
+                    
+                    // Assuming a standard 24 FPS (which we hardcoded in JobController for now)
+                    const fps = 24.0;
+                    const frameNumber = Math.round(totalSeconds * fps);
+                    
+                    document.getElementById('res-frame').textContent = frameNumber;
                     document.getElementById('res-text').textContent = targetText;
+                    
                     resultPanel.classList.remove('hidden');
                 }
             }
         });
 
-        eventSource.onerror = () => {
-            addLog('error', 'Lost connection to telemetry stream.');
+        eventSource.onerror = (err) => {
+            // Check if the connection is completely dead (readyState 2 = CLOSED)
+            if (eventSource.readyState === EventSource.CLOSED) {
+                addLog('error', 'Stream disconnected unexpectedly. Check Java console for fatal errors.');
+            } else {
+                addLog('error', 'Stream interrupted. Attempting to reconnect...');
+            }
+            
             eventSource.close();
             submitBtn.disabled = false;
         };

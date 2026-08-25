@@ -216,3 +216,63 @@ extract_text - It loads the RapidOCR ONNX model (CPU optimized), scans the clean
 Dont hardcode the url or the text
 it should be user driven
 Copy??
+
+We can now start working with the testing and implementation
+Lets pick some random, easy youtube video
+Give me the URL and what to search for
+We will eventually move and check the url in the PDF as well dw
+
+
+INFO:     127.0.0.1:52816 - "POST /api/v1/recognize-audio HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52816 - "POST /api/v1/recognize-text HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:52816 - "POST /api/v1/recognize-text HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:52816 - "POST /api/v1/recognize-text HTTP/1.1" 404 Not Found
+I get this from the server logs
+What does this indicate?
+
+I understand now
+So the 404 error is basically saying that there is no match for this frame
+Initiating connection to Java orchestrator...
+Job accepted. Assigned ID: 8099775a-e5a8-432f-89b9-e295d9919ea8
+Lost connection to telemetry stream.
+This is what i get in the front end
+"Lost connection to telemetry stream" is very misleading
+What could be a better msg to be displayed
+and why so??
+
+Live Pipeline Status
+Initiating connection to Java orchestrator...
+Job accepted. Assigned ID: 0e9b07cb-b8d1-4673-8130-5e899038004a
+[INITIALIZING] Extracting raw stream URL from https://www.youtube.com/watch?v=BPX9v8F547k
+[INITIALIZING] Fetching stream metadata via ffprobe...
+[AUDIO_SEARCH_RUNNING] Launching Audio Pointer and Coarse Visual Scan...
+[SUCCESS] Frame found! 00:00:55.801
+Extraction Result
+Timestamp: 00:00:55.801
+Frame Number: 1339
+Matched Text: Think Different
+This works
+Great
+But I think there is more to the document
+I thought I needed an image of the frame
+Also
+Keep in mind, if there is no image and the audio has been captured
+We just return the audio timestamp and stop
+This is the last option
+We need to check for the video before, we need to check for the subtities and what not
+Refer the document and meet those criteria
+Explain the path we will be taking and ill give my pov 
+
+Swap priority 2 and 3
+Burned-in -  If the subtitles are permanently "burned" into the video pixels (like in movies or ) our Visual Pointer (OCR) already perfectly handles this ig
+We still  show the frame image of the timestamp when the subtitle shows up
+It treats them as visual text
+so basically proirity 3 coincides with priortiy 1
+correction to be noted here
+priority 2 stays, As we discussed
+as there is not text
+We can just return the timestamp tbh
+
+I hope we are not hardcoding any of the metadata parametes
+Introduce a config.json file 
+Guide plz

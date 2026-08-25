@@ -78,8 +78,17 @@ public class TwoPointerSearch {
                 }
             }
 
-            // Create memory-safe chunk
-            ChunkManager.TimeChunk chunk = chunkManager.createMacroChunks(currentCursor, upperBound.get()).getFirst();
+            // SAFETY FIX: If the cursor has bypassed the newly shortened bound, safely exit.
+            if (currentCursor >= upperBound.get()) {
+                log.info("Cursor ({}s) passed the new boundary ({}s). Stopping coarse scan.", currentCursor, upperBound.get());
+                break;
+            }
+
+            // Get chunks. If empty (due to math edge cases), safely exit.
+            List<ChunkManager.TimeChunk> chunks = chunkManager.createMacroChunks(currentCursor, upperBound.get());
+            if (chunks.isEmpty()) break;
+
+            ChunkManager.TimeChunk chunk = chunks.getFirst();
             log.info("Visual Pointer scanning chunk: {}s to {}s", chunk.startTime(), chunk.endTime());
             
             List<String> frames = mediaExtractor.extractVisualFrames(
@@ -97,18 +106,15 @@ public class TwoPointerSearch {
             
             currentCursor = chunk.endTime();
         }
-        
+
         return Optional.empty();
     }
-
     private Optional<FrameResult> executeFineScan(StreamMetadata metadata, String targetText, double coarseTimestamp) throws Exception {
         ChunkManager.TimeChunk fineWindow = chunkManager.createFineScanWindow(coarseTimestamp);
         
-        // Extract all 24 sub-frames for that specific second
         List<String> subFrames = mediaExtractor.extractVisualFrames(
                 metadata.rawStreamUrl(), fineWindow.startTime(), fineWindow.endTime(), metadata.fps());
         
-        // BINARY SEARCH logic on the subFrames list
         int left = 0;
         int right = subFrames.size() - 1;
         Optional<FrameResult> absoluteFirstFrame = Optional.empty();
@@ -118,15 +124,37 @@ public class TwoPointerSearch {
             Optional<FrameResult> midResult = textRecognizer.recognizeText(subFrames.get(mid), targetText);
 
             if (midResult.isPresent()) {
-                // Found it, but maybe it appeared earlier. Move right pointer left.
-                absoluteFirstFrame = midResult;
+                // MATHEMATICAL FIX: Calculate exact time using the sub-frame index
+                double exactTimeInSeconds = fineWindow.startTime() + (mid / metadata.fps());
+                int exactFrameNumber = metadata.calculateFrameNumber(exactTimeInSeconds);
+                String formattedTime = formatTimestamp(exactTimeInSeconds);
+
+                FrameResult raw = midResult.get();
+                
+                // Inject the calculated Java math into the final result
+                absoluteFirstFrame = Optional.of(new FrameResult(
+                        formattedTime,
+                        exactFrameNumber,
+                        raw.extractedText(),
+                        raw.imagePath(),
+                        raw.confidenceScore()
+                ));
+                
+                // Keep searching left to find the absolute earliest sub-frame
                 right = mid - 1;
             } else {
-                // Not found yet. Move left pointer right.
                 left = mid + 1;
             }
         }
         
         return absoluteFirstFrame;
+    }
+
+    // Helper method to format seconds into HH:MM:SS.sss
+    private String formatTimestamp(double totalSeconds) {
+        int hours = (int) (totalSeconds / 3600);
+        int minutes = (int) ((totalSeconds % 3600) / 60);
+        double seconds = totalSeconds % 60;
+        return String.format("%02d:%02d:%06.3f", hours, minutes, seconds);
     }
 }

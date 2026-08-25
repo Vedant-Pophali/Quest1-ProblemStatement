@@ -9,7 +9,7 @@ logger = logging.getLogger(__name__)
 logger.info("Loading Whisper base.en model into CPU memory...")
 audio_model = WhisperModel("base.en", device="cpu", compute_type="int8")
 
-def find_target_timestamp(audio_path: str, target_text: str, fuzzy_threshold: int = 80) -> float:
+def find_target_timestamp(audio_path: str, target_text: str, fuzzy_threshold: int = 85) -> float:
     """
     Transcribes the audio track and searches for the target text using fuzzy matching.
     Returns the start timestamp in seconds if found, otherwise returns None.

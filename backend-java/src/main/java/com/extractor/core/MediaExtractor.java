@@ -35,4 +35,5 @@ public interface MediaExtractor {
      * @throws Exception If the extraction tool (e.g., yt-dlp) fails or times out.
      */
     String extractRawStreamUrl(String targetUrl) throws Exception;
+    com.extractor.model.StreamMetadata getMetadata(String streamUrl) throws Exception;
 }
