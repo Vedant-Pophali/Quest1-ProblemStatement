@@ -158,3 +158,44 @@ The audio pointer goes to a certain timestamp and stops
 Then the video pointer moved ahead and matches the audio pointer
 The approach u have mentioned is to check the earliest frame
 This is the binary search task
+
+OK
+I HAVE I THE THINGS PLACED
+I have all the dependencies in place
+
+Now its time to code 
+Guide me with the coding aspects here
+One file at a time
+
+Great
+What about the circuit breaker code
+If the Python server crashes or times out, this trips and fails the job gracefully instead of letting Java wait forever
+
+Next set of files would be the /core
+ChunkManager.java: The memory protector. It calculates how to safely slice the video into small micro-batches 
+MediaExtractor.java: An interface defining the contract for pulling media , extractAudio(), extractVisualFrames()
+
+Next up
+TextRecognizer- interface defining the contract for reading text from an image.
+TwoPointerSearch - The absolute brain of the operation. It implements the stateful search algorithm we discussed, independently advancing the audio_cursor and visual_cursor to find the target without overlapping
+Copy??
+
+Next would the /infra
+FFmpegAdapterImplements MediaExtractor,
+It uses ProcessBuilder to chain yt-dlp, ffprobe, and ffmpeg, piping raw image bytes directly into Java's memory.
+PythonOcrClient Implements TextRecognizer.java. It takes the raw frame bytes and sends an HTTP request to your Python ML worker.
+CircuitBreaker -  fault-tolerance wrapper for  PythonOcrClient. If the Python server crashes or times out, this trips and fails the job gracefully instead of letting Java wait forever.
+
+I think
+Failed cannot be Crashed or Text Never Appeared
+Separtae the two
+Would give me clarity later while debugging
+
+Great
+The Java Part is completed at this point right?
+Now we need to move to the next aspect of the main logic of the program
+Lets keep the approach similar
+Where i tell u exactly 
+What i want to be implemented from the particular file in the specified root folder
+Copy that??
+
