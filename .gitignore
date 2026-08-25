@@ -1,2 +1,43 @@
+# Python
+worker-python/venv/
+worker-python/__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+pip-log.txt
+pip-delete-this-directory.txt
 
+# Machine Learning Cache (HuggingFace/Whisper models)
+~/.cache/huggingface/
+worker-python/models/
+
+# Java & Maven
 backend-java/target/
+*.class
+*.jar
+*.war
+*.ear
+.mvn/
+
+# IDEs
+.idea/
+.vscode/
+*.swp
+*.swo
+.project
+.classpath
+.settings/
+
+# OS Generated
+.DS_Store
+Thumbs.db
+
+# Temporary Media Files (Extracted frames and audio)
+/tmp/
+temp/
+*.wav
+*.mp4
+*.m3u8
+*.jpg

@@ -199,3 +199,16 @@ Where i tell u exactly
 What i want to be implemented from the particular file in the specified root folder
 Copy that??
 
+I have created a branch called logical-aspects
+This is where we would be dealing with the code building
+Give me these files
+start_server - it acts like an entry point
+sets up the /ocr endpoint using Uvicorn to listen for HTTP POST requests from your Java backend
+requirements- for the end user who would be using this 
+clean_image - use opencv 
+cnverts image bytes into grayscale , and makes it visble wrt to the background
+if u doubts regarding this do clarify
+
+Follow it with this now
+extract_audio - dedicated script for the Whisper audio search and to handle the initial timestamp localization
+extract_text - It loads the RapidOCR ONNX model (CPU optimized), scans the cleaned image matrix, and returns the bounding boxes, strings, and confidence scores in a JSON file
