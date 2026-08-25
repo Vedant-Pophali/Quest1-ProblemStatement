@@ -1,0 +1,16 @@
+# Web Server
+fastapi==0.110.0
+uvicorn==0.29.0
+pydantic==2.6.4
+
+# Computer Vision & Image Processing
+opencv-python-headless==4.9.0.80
+numpy==1.26.4
+
+# Text Matching
+thefuzz==0.22.1
+python-Levenshtein==0.25.0
+
+# Deep Learning (OCR & Audio)
+rapidocr-onnxruntime>=1.4.4
+faster-whisper>=1.0.0
