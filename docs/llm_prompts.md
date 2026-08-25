@@ -212,3 +212,7 @@ if u doubts regarding this do clarify
 Follow it with this now
 extract_audio - dedicated script for the Whisper audio search and to handle the initial timestamp localization
 extract_text - It loads the RapidOCR ONNX model (CPU optimized), scans the cleaned image matrix, and returns the bounding boxes, strings, and confidence scores in a JSON file
+
+Dont hardcode the url or the text
+it should be user driven
+Copy??
