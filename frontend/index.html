@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Exact Frame Extractor</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>My Mind Rebels at Stagnation</h1>
+            <p>Precise Dialogue & Frame Extraction via Two-Pointer ML Search</p>
+        </header>
+
+        <main>
+            <form id="extraction-form">
+                <div class="input-group">
+                    <label for="url">Video Stream URL</label>
+                    <input type="url" id="url" placeholder="e.g., https://youtube.com/..." required>
+                </div>
+                
+                <div class="input-group">
+                    <label for="target-text">Target Dialogue</label>
+                    <input type="text" id="target-text" placeholder="Enter the exact text to search for..." required>
+                </div>
+
+                <button type="submit" id="submit-btn">Start Extraction</button>
+            </form>
+
+            <div class="status-panel">
+                <h3>Live Pipeline Status</h3>
+                <div class="terminal" id="terminal">
+                    <!-- SSE logs will populate here -->
+                    <span class="log-entry system">System ready. Waiting for input...</span>
+                </div>
+            </div>
+
+            <div class="result-panel hidden" id="result-panel">
+                <h3>Extraction Result</h3>
+                <div class="result-data">
+                    <p><strong>Timestamp:</strong> <span id="res-timestamp">--:--:--</span></p>
+                    <p><strong>Frame Number:</strong> <span id="res-frame">--</span></p>
+                    <p><strong>Matched Text:</strong> <span id="res-text">--</span></p>
+                </div>
+            </div>
+        </main>
+    </div>
+    <script src="app.js"></script>
+</body>
+</html>
