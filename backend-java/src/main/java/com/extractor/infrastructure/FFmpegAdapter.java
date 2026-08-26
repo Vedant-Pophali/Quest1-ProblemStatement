@@ -22,6 +22,9 @@ public class FFmpegAdapter implements MediaExtractor {
 
     @Override
     public StreamMetadata getMetadata(String streamUrl) throws Exception {
+        // Always use the Video URL (first part) for ffprobe metadata
+        String videoStream = streamUrl.contains("|||") ? streamUrl.split("\\|\\|\\|")[0] : streamUrl;
+        
         ProcessBuilder pb = new ProcessBuilder(
                 "ffprobe", 
                 "-user_agent", USER_AGENT,
@@ -30,7 +33,7 @@ public class FFmpegAdapter implements MediaExtractor {
                 "-select_streams", "v:0",
                 "-show_entries", "stream=r_frame_rate,duration",
                 "-of", "csv=p=0",
-                streamUrl
+                videoStream
         );
 
         Process process = pb.start();
@@ -59,6 +62,9 @@ public class FFmpegAdapter implements MediaExtractor {
     public String extractAudio(String streamUrl, double startTime, double duration) throws Exception {
         Path tempAudio = Files.createTempFile("audio_chunk_", ".wav");
         
+        // If we received a separated audio URL from yt-dlp, use it! Otherwise, fallback to the combined URL.
+        String audioStream = streamUrl.contains("|||") ? streamUrl.split("\\|\\|\\|")[1] : streamUrl;
+        
         ProcessBuilder pb = new ProcessBuilder(
                 "ffmpeg", "-y", 
                 "-user_agent", USER_AGENT,
@@ -66,7 +72,7 @@ public class FFmpegAdapter implements MediaExtractor {
                 "-reconnect", "1", "-reconnect_streamed", "1", "-reconnect_delay_max", "5",
                 "-ss", String.valueOf(startTime),
                 "-t", String.valueOf(duration),
-                "-i", streamUrl,
+                "-i", audioStream,
                 "-vn", "-ac", "1", "-ar", "16000",
                 tempAudio.toString()
         );
@@ -80,12 +86,15 @@ public class FFmpegAdapter implements MediaExtractor {
         Path tempDir = Files.createTempDirectory("frames_" + UUID.randomUUID() + "_");
         String outputPattern = tempDir.resolve("frame_%04d.jpg").toString();
 
+        // Always use the Video URL for frame extraction
+        String videoStream = streamUrl.contains("|||") ? streamUrl.split("\\|\\|\\|")[0] : streamUrl;
+
         ProcessBuilder pb = new ProcessBuilder(
                 "ffmpeg", "-y",
                 "-user_agent", USER_AGENT,
                 "-headers", "Referer: https://ok.ru/\r\n",
                 "-reconnect", "1", "-reconnect_streamed", "1", "-reconnect_delay_max", "5",
-                "-i", streamUrl, 
+                "-i", videoStream, 
                 "-ss", String.valueOf(startTime),
                 "-t", String.valueOf(duration),
                 "-vf", "fps=" + fps,
@@ -105,23 +114,30 @@ public class FFmpegAdapter implements MediaExtractor {
     public String extractRawStreamUrl(String targetUrl) throws Exception {
         ProcessBuilder pb = new ProcessBuilder(
                 "python", "-m", "yt_dlp", 
-                "--no-check-certificate", 
-                // FIX: Force Python to use the exact same User-Agent as FFmpeg so the CDN signatures match!
+                "--no-check-certificate",
+                // Ask for the best separated streams, fallback to combined if separated doesn't exist
+                "-f", "bestvideo[ext=mp4]+bestaudio[ext=m4a]/b", 
                 "--user-agent", USER_AGENT, 
                 "-g", targetUrl
         );
         pb.redirectErrorStream(true); 
         Process process = pb.start();
-        String rawUrl = null;
+        
+        String videoUrl = null;
+        String audioUrl = null;
 
         try (java.io.BufferedReader reader = new java.io.BufferedReader(new java.io.InputStreamReader(process.getInputStream()))) {
             String line;
             while ((line = reader.readLine()) != null) {
                 log.info("[yt-dlp] {}", line); 
-                
                 String trimmed = line.trim();
-                if (trimmed.startsWith("http") && rawUrl == null) {
-                    rawUrl = trimmed;
+                
+                if (trimmed.startsWith("http")) {
+                    if (videoUrl == null) {
+                        videoUrl = trimmed; // First line is always the video stream
+                    } else if (audioUrl == null) {
+                        audioUrl = trimmed; // Second line is the audio stream
+                    }
                 }
             }
         }
@@ -133,11 +149,17 @@ public class FFmpegAdapter implements MediaExtractor {
             throw new RuntimeException("yt-dlp process timed out after 120 seconds.");
         }
         
-        if (rawUrl == null) {
+        if (videoUrl == null) {
             throw new RuntimeException("Failed to extract stream URL via yt-dlp.");
         }
         
-        return rawUrl;
+        // If we found both, join them with our custom delimiter
+        if (audioUrl != null) {
+            return videoUrl + "|||" + audioUrl;
+        }
+        
+        // If it was a combined stream, just return the single URL
+        return videoUrl;
     }
     
     private void executeProcess(ProcessBuilder pb) throws Exception {

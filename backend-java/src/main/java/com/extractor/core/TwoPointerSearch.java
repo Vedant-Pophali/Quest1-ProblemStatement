@@ -37,9 +37,11 @@ public class TwoPointerSearch {
                 runVisualPointer(metadata, targetText, dynamicVisualUpperBound, audioPointerFuture, threshold);
             Future<Optional<FrameResult>> visualPointerFuture = virtualExecutor.submit(visualTask);
 
+            // Wait for both pointers to complete their execution
             Optional<FrameResult> visualResult = visualPointerFuture.get();
             Optional<Double> audioResult = audioPointerFuture.get();
 
+            // Return the unadulterated results to the controller to evaluate the hierarchy
             return new ExtractionResult(visualResult, audioResult);
         }
     }
@@ -50,7 +52,7 @@ public class TwoPointerSearch {
             String audioPath = mediaExtractor.extractAudio(rawStreamUrl, 0, 3600); 
             return textRecognizer.recognizeAudioTimestamp(audioPath, targetText, threshold);
         } catch (Exception e) {
-            log.error("Audio Pointer failed. Visual Pointer will have to search the entire video.", e);
+            log.error("Audio Pointer failed or timed out. Visual Pointer will have to search the entire video.", e);
             return Optional.empty();
         }
     }
@@ -63,17 +65,23 @@ public class TwoPointerSearch {
             int threshold) throws Exception {
         
         double currentCursor = 0.0;
+        boolean audioBoundApplied = false;
 
+        // COARSE SCAN (1 FPS)
         while (currentCursor < upperBound.get()) {
             
-            if (audioPointerFuture.isDone()) {
+            if (!audioBoundApplied && audioPointerFuture.isDone()) {
                 Optional<Double> audioHit = audioPointerFuture.get();
                 if (audioHit.isPresent()) {
+                    // WIDEN THE NET: Whisper segments can be up to 30 seconds long. 
+                    // We search up to 15 seconds after the audio timestamp.
                     double audioBound = audioHit.get() + 15.0; 
                     upperBound.set(Math.min(upperBound.get(), audioBound));
                     log.info("Visual Pointer path dynamically shortened to {}s by Audio Pointer.", upperBound.get());
                 }
+                audioBoundApplied = true; // Prevents log spam
             }
+            
             if (currentCursor >= upperBound.get()) {
                 log.info("Cursor ({}s) passed the new boundary ({}s). Stopping coarse scan.", currentCursor, upperBound.get());
                 break;
@@ -106,7 +114,6 @@ public class TwoPointerSearch {
         return Optional.empty();
     }
 
-    // FIX: Added coarseFallback parameter
     private Optional<FrameResult> executeFineScan(StreamMetadata metadata, String targetText, double coarseTimestamp, int threshold, FrameResult coarseFallback) throws Exception {
         ChunkManager.TimeChunk fineWindow = chunkManager.createFineScanWindow(coarseTimestamp);
         
