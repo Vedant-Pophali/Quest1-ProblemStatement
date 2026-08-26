@@ -29,9 +29,9 @@ public class PythonOcrClient implements TextRecognizer {
     }
 
     @Override
-    public Optional<FrameResult> recognizeText(String imagePath, String targetText) throws Exception {
+    public Optional<FrameResult> recognizeText(String imagePath, String targetText, int threshold) throws Exception {
         String jsonPayload = objectMapper.writeValueAsString(
-                new OcrRequest(imagePath, targetText)
+                new OcrRequest(imagePath, targetText, threshold)
         );
 
         HttpRequest request = HttpRequest.newBuilder()
@@ -54,9 +54,9 @@ public class PythonOcrClient implements TextRecognizer {
     }
 
     @Override
-    public Optional<Double> recognizeAudioTimestamp(String audioPath, String targetText) throws Exception {
+    public Optional<Double> recognizeAudioTimestamp(String audioPath, String targetText, int threshold) throws Exception {
         String jsonPayload = objectMapper.writeValueAsString(
-                new AudioRequest(audioPath, targetText)
+                new AudioRequest(audioPath, targetText, threshold)
         );
 
         HttpRequest request = HttpRequest.newBuilder()
@@ -77,6 +77,6 @@ public class PythonOcrClient implements TextRecognizer {
     }
 
     // Lightweight records for JSON serialization
-    private record OcrRequest(String imagePath, String targetText) {}
-    private record AudioRequest(String audioPath, String targetText) {}
+    private record OcrRequest(String imagePath, String targetText, int threshold) {}
+    private record AudioRequest(String audioPath, String targetText, int threshold) {}
 }

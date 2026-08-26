@@ -11,46 +11,36 @@ ocr = RapidOCR()
 
 def analyze_frame_text(image_path: str, target_text: str, fuzzy_threshold: int = 85) -> dict:
     """
-    Cleans the image, runs RapidOCR, and fuzzy matches against the target.
-    Returns a dictionary containing bounding boxes, extracted text, and confidence,
-    or None if the text is not found.
+    Cleans the image, runs RapidOCR, concatenates all text found on the screen,
+    and fuzzy matches the combined text against the target using token arrays.
     """
     try:
-        # 1. Feed the image through our OpenCV enhancement pipeline
         cleaned_image_matrix = preprocess_for_ocr(image_path)
-
-        # 2. Execute OCR on the NumPy array
-        # RapidOCR returns a tuple: (result_list, elapse_time)
         result, _ = ocr(cleaned_image_matrix)
 
         if result is None:
             return None
 
-        best_score = 0
-        best_match = None
+        # Aggregate all detected text on the entire screen into one string
+        screen_text_fragments = [detection[1] for detection in result]
+        full_screen_text = " ".join(screen_text_fragments)
+
         target_lower = target_text.lower()
+        screen_lower = full_screen_text.lower()
 
-        # 3. Iterate through detected text blocks
-        # result format: [[ [x1,y1], [x2,y2], [x3,y3], [x4,y4] ], "text", confidence]
-        for detection in result:
-            box, extracted_string, confidence = detection
-            
-            # Use partial_ratio to handle extra characters/noise around the dialogue
-            score = fuzz.partial_ratio(target_lower, extracted_string.lower())
+        # token_set_ratio ignores exact ordering and is highly resilient to OCR typos
+        score_partial = fuzz.partial_ratio(target_lower, screen_lower)
+        score_token = fuzz.token_set_ratio(target_lower, screen_lower)
+        score = max(score_partial, score_token)
 
-            if score > best_score:
-                best_score = score
-                best_match = {
-                    "extractedText": extracted_string,
-                    "boundingBox": box,
-                    "ocrConfidence": float(confidence),
-                    "fuzzyScore": score
-                }
-
-        # 4. Return result if it meets our 80% threshold
-        if best_score >= fuzzy_threshold:
-            logger.info(f"Visual match found! Score: {best_score}, Text: '{best_match['extractedText']}'")
-            return best_match
+        if score >= fuzzy_threshold:
+            logger.info(f"Visual match found! Score: {score}, Screen Text: '{full_screen_text}'")
+            return {
+                "extractedText": full_screen_text,
+                "boundingBox": result[0][0] if len(result) > 0 else [],
+                "ocrConfidence": 1.0, 
+                "fuzzyScore": float(score)
+            }
 
         return None
 

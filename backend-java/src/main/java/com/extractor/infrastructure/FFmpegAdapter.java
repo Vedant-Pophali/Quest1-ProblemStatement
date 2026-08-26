@@ -16,12 +16,19 @@ import java.util.stream.Collectors;
 
 public class FFmpegAdapter implements MediaExtractor {
     private static final Logger log = LoggerFactory.getLogger(FFmpegAdapter.class);
-    private static final int TIMEOUT_SECONDS = 60;
+    
+    // Increased to 600 seconds (10 mins) to allow full movie chunk processing over HLS
+    private static final int TIMEOUT_SECONDS = 600;
+    
+    // Standard User-Agent to bypass CDN 403 Forbidden blocks
+    private static final String USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
 
     @Override
     public StreamMetadata getMetadata(String streamUrl) throws Exception {
         ProcessBuilder pb = new ProcessBuilder(
-                "ffprobe", "-v", "error",
+                "ffprobe", 
+                "-user_agent", USER_AGENT, // Anti-bot spoofing
+                "-v", "error",
                 "-select_streams", "v:0",
                 "-show_entries", "stream=r_frame_rate,duration",
                 "-of", "csv=p=0",
@@ -36,7 +43,7 @@ public class FFmpegAdapter implements MediaExtractor {
             String[] parts = output.split(",");
             String[] fpsParts = parts[0].split("/");
             double fps = Double.parseDouble(fpsParts[0]) / Double.parseDouble(fpsParts[1]);
-            double duration = Double.parseDouble(parts[1])+1.0;
+            double duration = Double.parseDouble(parts[1]) + 1.0;
             
             log.info("Dynamically loaded metadata - FPS: {}, Duration: {}s", fps, duration);
             return new StreamMetadata(streamUrl, fps, duration, null);
@@ -50,9 +57,11 @@ public class FFmpegAdapter implements MediaExtractor {
     public String extractAudio(String streamUrl, double startTime, double duration) throws Exception {
         Path tempAudio = Files.createTempFile("audio_chunk_", ".wav");
         
-        // AUDIO RULE: Fast-Seek (-ss BEFORE -i) is required for remote audio streams
         ProcessBuilder pb = new ProcessBuilder(
                 "ffmpeg", "-y", 
+                "-user_agent", USER_AGENT,
+                // Make HTTP connections highly resilient for ok.ru .ts chunks
+                "-reconnect", "1", "-reconnect_streamed", "1", "-reconnect_delay_max", "5",
                 "-ss", String.valueOf(startTime),
                 "-t", String.valueOf(duration),
                 "-i", streamUrl,
@@ -62,16 +71,18 @@ public class FFmpegAdapter implements MediaExtractor {
         executeProcess(pb);
         return tempAudio.toString();
     }
-
+    
     @Override
     public List<String> extractVisualFrames(String streamUrl, double startTime, double endTime, double fps) throws Exception {
         double duration = endTime - startTime;
         Path tempDir = Files.createTempDirectory("frames_" + UUID.randomUUID() + "_");
         String outputPattern = tempDir.resolve("frame_%04d.jpg").toString();
 
-        // VIDEO RULE: Frame-Accurate Seek (-ss AFTER -i) prevents I-Frame snapping
         ProcessBuilder pb = new ProcessBuilder(
                 "ffmpeg", "-y",
+                "-user_agent", USER_AGENT, // Anti-bot spoofing
+                // Make HTTP connections highly resilient for ok.ru .ts chunks
+                "-reconnect", "1", "-reconnect_streamed", "1", "-reconnect_delay_max", "5",
                 "-i", streamUrl, 
                 "-ss", String.valueOf(startTime),
                 "-t", String.valueOf(duration),
@@ -90,8 +101,8 @@ public class FFmpegAdapter implements MediaExtractor {
 
     @Override
     public String extractRawStreamUrl(String targetUrl) throws Exception {
-        // -f b forces yt-dlp to return a single combined video+audio stream
-        ProcessBuilder pb = new ProcessBuilder("yt-dlp", "-f", "b", "-g", targetUrl);
+        // Prioritize MP4 to avoid fragmented HLS (.m3u8) 403 blocks
+        ProcessBuilder pb = new ProcessBuilder("yt-dlp", "-f", "best[ext=mp4]/best", "-g", targetUrl);
         pb.redirectErrorStream(true); 
         Process process = pb.start();
         String rawUrl = null;
@@ -99,7 +110,6 @@ public class FFmpegAdapter implements MediaExtractor {
         try (java.io.BufferedReader reader = new java.io.BufferedReader(new java.io.InputStreamReader(process.getInputStream()))) {
             String line;
             while ((line = reader.readLine()) != null) {
-                // Grab the FIRST http link it finds and ignore anything else
                 if (line.startsWith("http") && rawUrl == null) {
                     rawUrl = line.trim();
                 }
@@ -112,11 +122,11 @@ public class FFmpegAdapter implements MediaExtractor {
         }
         return rawUrl;
     }
+
     private void executeProcess(ProcessBuilder pb) throws Exception {
-        pb.redirectErrorStream(true); // Merge stderr to stdout
+        pb.redirectErrorStream(true); 
         Process process = pb.start();
         
-        // Consume FFmpeg's output to prevent OS buffer deadlocks
         process.getInputStream().transferTo(System.out);
 
         boolean finished = process.waitFor(TIMEOUT_SECONDS, TimeUnit.SECONDS);
@@ -127,7 +137,6 @@ public class FFmpegAdapter implements MediaExtractor {
             throw new RuntimeException("FFmpeg extraction timed out.");
         }
 
-        // CRITICAL BUG FIX: Ensure FFmpeg didn't silently crash and create a 0-byte file
         if (process.exitValue() != 0) {
             throw new RuntimeException("FFmpeg process failed with exit code: " + process.exitValue());
         }

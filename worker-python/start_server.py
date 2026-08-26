@@ -11,10 +11,12 @@ app = FastAPI(title="Video Text & Audio Extraction Worker")
 class OcrRequest(BaseModel):
     imagePath: str
     targetText: str
+    threshold: int
 
 class AudioRequest(BaseModel):
     audioPath: str
     targetText: str
+    threshold: int
 
 class FrameResult(BaseModel):
     timestamp: str
@@ -29,7 +31,7 @@ def recognize_text(req: OcrRequest):
     Receives an image path from Java, preprocesses it, runs OCR, 
     and checks for the target text using fuzzy matching.
     """
-    ocr_result = analyze_frame_text(req.imagePath, req.targetText)
+    ocr_result = analyze_frame_text(req.imagePath, req.targetText, fuzzy_threshold=req.threshold)
     
     if ocr_result is None:
         # Use HTTPException to bypass Pydantic response_model validation for errors
@@ -49,7 +51,7 @@ def recognize_audio(req: AudioRequest):
     Receives an audio track path, runs faster-whisper, 
     and returns the timestamp if the phrase is spoken.
     """
-    timestamp = find_target_timestamp(req.audioPath, req.targetText)
+    timestamp = find_target_timestamp(req.audioPath, req.targetText, fuzzy_threshold=req.threshold)
     
     if timestamp is None:
         raise HTTPException(status_code=404, detail="Target text not found in audio track.")

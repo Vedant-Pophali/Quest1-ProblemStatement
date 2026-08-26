@@ -276,3 +276,72 @@ We can just return the timestamp tbh
 I hope we are not hardcoding any of the metadata parametes
 Introduce a config.json file 
 Guide plz
+
+This is the latest snapshot of my codebase
+Based on this info
+What are the next steps we would be taking?
+Give me a roadmap
+With the reasoning behind it
+Remember the fact that we do not hardcode any of the values
+Copy??
+
+The roadmap looks decent
+The addition of the threshold % is a good upgrade
+We keep the base as 85% 
+We dont change it, but we are open to get it changed if the user feels the need so
+this is gonna be based on the quality of the video
+We need to keep in check that the % does not go above 100 and below a particular value
+to prevent false positives & negatives
+SO,There would be a simple text box that we can add in the ui
+initialized to 85%
+it can be modified
+Give me code for these instructions
+
+I have updated all the code files as u told
+In the next phase
+i would like to accomplish the IMAGE display in the frontend
+This is crucial
+As this is the fundamental requirment
+Base64 encoding 
+Sending raw binary image files over a Server-Sent Events (SSE) stream is messy and prone to corruption. Encoding it as Base64 allows us to embed the entire image directly into the JSON telemetry payload. The frontend can then instantly render it without needing a secondary file-download endpoint
+
+Copy that
+Have implemented the changes u gave
+Based on this
+Lets test if the image is displayed on the ui
+We can proceed with the later phases
+
+ Great news
+The image is popping up on  the UI
+Now lets move to the next phase 
+This is the priority driven phase
+We need to wire TwoPointerSearch.java and JobController.java to strictly obey your Priority 1 (Visual) and Priority 2 (Audio) rules.
+
+The Action: We will adjust the logic flow so that Java caches the Audio Pointer's timestamp but does not immediately report success. It will wait for the Visual Pointer to finish its search.
+If the Visual Pointer finds the text, Java fires a SUCCESS_VISUAL event containing the Base64 image and exact timestamp.
+If the Visual Pointer exhausts the entire search space and finds nothing, Java will check the cached Audio result. If it exists, it fires a SUCCESS_AUDIO event with only the timestamp.
+If both fail, it fires TEXT_NOT_FOUND.
+The Reasoning: This guarantees that the system always attempts to deliver the highest-priority visual proof first, elegantly gracefully degrading to audio-only if the text is merely spoken, completely satisfying the problem statement constraints.
+
+Can u give me some  links that i can use to test the edge cases we discussed
+
+Video Stream URL
+https://www.youtube.com/watch?v=9FnO3igOkOk
+Match Accuracy Threshold (%)
+85
+Target Dialogue
+You can't handle the truth
+Start Extraction
+Live Pipeline Status
+Initiating connection to Java orchestrator...
+Job accepted. Assigned ID: 8f86c8ff-36e0-4742-bea6-abe726981e2b
+[INITIALIZING] Extracting raw stream URL from https://www.youtube.com/watch?v=9FnO3igOkOk
+[INITIALIZING] Fetching stream metadata via ffprobe...
+[AUDIO_SEARCH_RUNNING] Launching Audio Pointer and Coarse Visual Scan...
+[SUCCESS_AUDIO] Text not found visually. Audio match located.
+Extraction Result
+Timestamp: 00:00:44.500
+
+Frame Number: N/A (Audio Match Only)
+Matched Text: You can't handle the truth
+Target text was spoken, but did not appear visually on screen.  

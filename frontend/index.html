@@ -19,6 +19,11 @@
                     <label for="url">Video Stream URL</label>
                     <input type="url" id="url" placeholder="e.g., https://youtube.com/..." required>
                 </div>
+
+                <div class="input-group">
+                    <label for="threshold">Match Accuracy Threshold (%)</label>
+                    <input type="number" id="threshold" value="85" min="60" max="100" required>
+                </div>
                 
                 <div class="input-group">
                     <label for="target-text">Target Dialogue</label>
@@ -42,6 +47,8 @@
                     <p><strong>Timestamp:</strong> <span id="res-timestamp">--:--:--</span></p>
                     <p><strong>Frame Number:</strong> <span id="res-frame">--</span></p>
                     <p><strong>Matched Text:</strong> <span id="res-text">--</span></p>
+                    <p id="res-audio-msg" class="hidden" style="color: #fbbf24; font-weight: 600; margin-top: 1rem;"></p>
+                    <img id="res-image" class="hidden" alt="Extracted Frame" style="max-width: 100%; border-radius: 8px; margin-top: 1rem; border: 1px solid #334155;">
                 </div>
             </div>
         </main>

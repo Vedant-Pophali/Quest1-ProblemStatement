@@ -1,6 +1,7 @@
 package com.extractor.api;
 
 import com.extractor.core.TwoPointerSearch;
+import com.extractor.model.ExtractionResult;
 import com.extractor.model.StreamMetadata;
 import com.extractor.infrastructure.FFmpegAdapter;
 import io.javalin.http.Context;
@@ -23,38 +24,44 @@ public class JobController {
     }
 
     public void startExtractionJob(Context ctx) {
-        // Parse basic JSON input: { "url": "...", "targetText": "..." }
         JobRequest req = ctx.bodyAsClass(JobRequest.class);
         String jobId = UUID.randomUUID().toString();
 
-        // Offload the entire process to a Virtual Thread to keep the HTTP server strictly non-blocking
-        Thread.ofVirtual().start(() -> processJob(jobId, req.url(), req.targetText()));
+        Thread.ofVirtual().start(() -> processJob(jobId, req.url(), req.targetText(), req.threshold()));
 
-        // Return immediately so the frontend can open the SSE connection
         ctx.status(202).json(new JobResponse(jobId, "Job accepted and initializing."));
     }
 
-    private void processJob(String jobId, String targetUrl, String targetText) {
+    private void processJob(String jobId, String targetUrl, String targetText, int threshold) {
         try {
-            // Give the frontend EventSource 1.5 seconds to establish the connection 
-            // before we start sending live updates.
             Thread.sleep(1500);
 
             liveUpdateSender.sendUpdate(jobId, "INITIALIZING", "Extracting raw stream URL from " + targetUrl);
             String rawUrl = fFmpegAdapter.extractRawStreamUrl(targetUrl);
             
             liveUpdateSender.sendUpdate(jobId, "INITIALIZING", "Fetching stream metadata via ffprobe...");
-            // Dynamically fetch exact duration and FPS to prevent FFmpeg phantom frames
             StreamMetadata metadata = fFmpegAdapter.getMetadata(rawUrl);
             
             liveUpdateSender.sendUpdate(jobId, "AUDIO_SEARCH_RUNNING", "Launching Audio Pointer and Coarse Visual Scan...");
             
-            var result = searchOrchestrator.executeSearch(metadata, targetText);
+            // Core Search Execution returning the unified result wrapper
+            ExtractionResult result = searchOrchestrator.executeSearch(metadata, targetText, threshold);
             
-            if (result.isPresent()) {
-                liveUpdateSender.sendUpdate(jobId, "SUCCESS", "Frame found! " + result.get().timestamp());
-            } else {
-                liveUpdateSender.sendUpdate(jobId, "TEXT_NOT_FOUND", "Search exhausted. Text did not appear.");
+            // PRIORITY 1: Visual Match (Absolute Source of Truth)
+            if (result.visualResult().isPresent()) {
+                var frame = result.visualResult().get();
+                String base64Img = com.extractor.util.ImageEncoder.encodeToBase64(frame.imagePath());
+                liveUpdateSender.sendVisualSuccess(jobId, frame.timestamp(), frame.frameNumber(), base64Img);
+            } 
+            // PRIORITY 2: Audio-Only Fallback
+            else if (result.audioTimestamp().isPresent()) {
+                double rawSeconds = result.audioTimestamp().get();
+                String formattedTime = formatTimestamp(rawSeconds);
+                liveUpdateSender.sendAudioSuccess(jobId, formattedTime);
+            } 
+            // PRIORITY 3: Total Failure
+            else {
+                liveUpdateSender.sendUpdate(jobId, "TEXT_NOT_FOUND", "Search exhausted. Text did not appear visually or in audio.");
             }
             
         } catch (Exception e) {
@@ -63,6 +70,13 @@ public class JobController {
         }
     }
 
-    private record JobRequest(String url, String targetText) {}
+    private String formatTimestamp(double totalSeconds) {
+        int hours = (int) (totalSeconds / 3600);
+        int minutes = (int) ((totalSeconds % 3600) / 60);
+        double seconds = totalSeconds % 60;
+        return String.format("%02d:%02d:%06.3f", hours, minutes, seconds);
+    }
+
+    private record JobRequest(String url, String targetText, int threshold) {}
     private record JobResponse(String jobId, String message) {}
 }

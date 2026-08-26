@@ -24,13 +24,13 @@ public class App {
         // 2. Wrap Python client in the Circuit Breaker transparently
         TextRecognizer resilientRecognizer = new TextRecognizer() {
             @Override
-            public Optional<FrameResult> recognizeText(String imagePath, String targetText) throws Exception {
-                return breaker.execute(() -> basePythonClient.recognizeText(imagePath, targetText));
+            public Optional<FrameResult> recognizeText(String imagePath, String targetText, int threshold) throws Exception {
+                return breaker.execute(() -> basePythonClient.recognizeText(imagePath, targetText, threshold));
             }
 
             @Override
-            public Optional<Double> recognizeAudioTimestamp(String audioPath, String targetText) throws Exception {
-                return breaker.execute(() -> basePythonClient.recognizeAudioTimestamp(audioPath, targetText));
+            public Optional<Double> recognizeAudioTimestamp(String audioPath, String targetText, int threshold) throws Exception {
+                return breaker.execute(() -> basePythonClient.recognizeAudioTimestamp(audioPath, targetText, threshold));
             }
         };
 

@@ -3,6 +3,7 @@ document.getElementById('extraction-form').addEventListener('submit', async (e) 
     
     const url = document.getElementById('url').value;
     const targetText = document.getElementById('target-text').value;
+    const threshold = parseInt(document.getElementById('threshold').value, 10);
     const submitBtn = document.getElementById('submit-btn');
     const terminal = document.getElementById('terminal');
     const resultPanel = document.getElementById('result-panel');
@@ -11,14 +12,16 @@ document.getElementById('extraction-form').addEventListener('submit', async (e) 
     submitBtn.disabled = true;
     terminal.innerHTML = '';
     resultPanel.classList.add('hidden');
+    document.getElementById('res-image').classList.add('hidden');
+    document.getElementById('res-audio-msg').classList.add('hidden');
     addLog('system', 'Initiating connection to Java orchestrator...');
 
     try {
-        // 1. Submit the Job to Java Backend
+        // 1. Submit the Job to Java Backend (now includes threshold)
         const response = await fetch('/api/jobs', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ url, targetText })
+            body: JSON.stringify({ url, targetText, threshold })
         });
 
         if (!response.ok) throw new Error('Failed to start job');
@@ -36,43 +39,37 @@ document.getElementById('extraction-form').addEventListener('submit', async (e) 
             // Format terminal output
             let logClass = 'normal';
             if (payload.state === 'SYSTEM_ERROR') logClass = 'error';
-            if (payload.state === 'SUCCESS') logClass = 'success';
+            if (payload.state.startsWith('SUCCESS')) logClass = 'success';
             
             addLog(logClass, `[${payload.state}] ${payload.message}`);
 
             // Handle Completion States
-            if (payload.state === 'SUCCESS' || payload.state === 'TEXT_NOT_FOUND' || payload.state === 'SYSTEM_ERROR') {
+            if (payload.state.startsWith('SUCCESS') || payload.state === 'TEXT_NOT_FOUND' || payload.state === 'SYSTEM_ERROR') {
                 eventSource.close();
                 submitBtn.disabled = false;
                 
-                if (payload.state === 'SUCCESS') {
-                    const timestampStr = payload.message.split('! ')[1] || "00:00:00.000";
-                    
-                    // Display the timestamp
-                    document.getElementById('res-timestamp').textContent = timestampStr;
-                    
-                    // Calculate the exact frame number
-                    // Formula: (Hours * 3600 + Minutes * 60 + Seconds) * FPS
-                    let totalSeconds = 0;
-                    
-                    // Handle HH:MM:SS.sss format if present
-                    if (timestampStr.includes(':')) {
-                        const parts = timestampStr.split(':');
-                        const hours = parseInt(parts[0]) || 0;
-                        const minutes = parseInt(parts[1]) || 0;
-                        const seconds = parseFloat(parts[2]) || 0;
-                        totalSeconds = (hours * 3600) + (minutes * 60) + seconds;
-                    } else {
-                        // Handle raw seconds if the backend passed a float
-                        totalSeconds = parseFloat(timestampStr) || 0;
-                    }
-                    
-                    // Assuming a standard 24 FPS (which we hardcoded in JobController for now)
-                    const fps = 24.0;
-                    const frameNumber = Math.round(totalSeconds * fps);
-                    
-                    document.getElementById('res-frame').textContent = frameNumber;
+                if (payload.state === 'SUCCESS_VISUAL') {
+                    // Inject explicit JSON data
+                    document.getElementById('res-timestamp').textContent = payload.timestamp;
+                    document.getElementById('res-frame').textContent = payload.frameNumber;
                     document.getElementById('res-text').textContent = targetText;
+                    
+                    // Render Base64 Image
+                    const imgElement = document.getElementById('res-image');
+                    imgElement.src = `data:image/jpeg;base64,${payload.image}`;
+                    imgElement.classList.remove('hidden');
+                    
+                    resultPanel.classList.remove('hidden');
+                } 
+                else if (payload.state === 'SUCCESS_AUDIO') {
+                    document.getElementById('res-timestamp').textContent = payload.timestamp;
+                    document.getElementById('res-frame').textContent = 'N/A (Audio Match Only)';
+                    document.getElementById('res-text').textContent = targetText;
+                    
+                    // Show Audio Fallback Message
+                    const audioMsg = document.getElementById('res-audio-msg');
+                    audioMsg.textContent = 'Target text was spoken, but did not appear visually on screen.';
+                    audioMsg.classList.remove('hidden');
                     
                     resultPanel.classList.remove('hidden');
                 }
