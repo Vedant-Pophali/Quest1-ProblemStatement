@@ -22,13 +22,12 @@ public class FFmpegAdapter implements MediaExtractor {
 
     @Override
     public StreamMetadata getMetadata(String streamUrl) throws Exception {
-        // Always use the Video URL (first part) for ffprobe metadata
         String videoStream = streamUrl.contains("|||") ? streamUrl.split("\\|\\|\\|")[0] : streamUrl;
         
         ProcessBuilder pb = new ProcessBuilder(
                 "ffprobe", 
                 "-user_agent", USER_AGENT,
-                "-headers", "Referer: https://ok.ru/\r\n",
+                "-headers", getDomainReferer(videoStream), // <-- DYNAMIC REFERER
                 "-v", "error",
                 "-select_streams", "v:0",
                 "-show_entries", "stream=r_frame_rate,duration",
@@ -61,14 +60,12 @@ public class FFmpegAdapter implements MediaExtractor {
     @Override
     public String extractAudio(String streamUrl, double startTime, double duration) throws Exception {
         Path tempAudio = Files.createTempFile("audio_chunk_", ".wav");
-        
-        // If we received a separated audio URL from yt-dlp, use it! Otherwise, fallback to the combined URL.
         String audioStream = streamUrl.contains("|||") ? streamUrl.split("\\|\\|\\|")[1] : streamUrl;
         
         ProcessBuilder pb = new ProcessBuilder(
                 "ffmpeg", "-y", 
                 "-user_agent", USER_AGENT,
-                "-headers", "Referer: https://ok.ru/\r\n",
+                "-headers", getDomainReferer(audioStream), // <-- DYNAMIC REFERER
                 "-reconnect", "1", "-reconnect_streamed", "1", "-reconnect_delay_max", "5",
                 "-ss", String.valueOf(startTime),
                 "-t", String.valueOf(duration),
@@ -86,13 +83,12 @@ public class FFmpegAdapter implements MediaExtractor {
         Path tempDir = Files.createTempDirectory("frames_" + UUID.randomUUID() + "_");
         String outputPattern = tempDir.resolve("frame_%04d.jpg").toString();
 
-        // Always use the Video URL for frame extraction
         String videoStream = streamUrl.contains("|||") ? streamUrl.split("\\|\\|\\|")[0] : streamUrl;
 
         ProcessBuilder pb = new ProcessBuilder(
                 "ffmpeg", "-y",
                 "-user_agent", USER_AGENT,
-                "-headers", "Referer: https://ok.ru/\r\n",
+                "-headers", getDomainReferer(videoStream), // <-- DYNAMIC REFERER
                 "-reconnect", "1", "-reconnect_streamed", "1", "-reconnect_delay_max", "5",
                 "-i", videoStream, 
                 "-ss", String.valueOf(startTime),
@@ -115,8 +111,7 @@ public class FFmpegAdapter implements MediaExtractor {
         ProcessBuilder pb = new ProcessBuilder(
                 "python", "-m", "yt_dlp", 
                 "--no-check-certificate",
-                // Ask for the best separated streams, fallback to combined if separated doesn't exist
-                "-f", "bestvideo[ext=mp4]+bestaudio[ext=m4a]/b", 
+                "-f", "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best", 
                 "--user-agent", USER_AGENT, 
                 "-g", targetUrl
         );
@@ -134,9 +129,9 @@ public class FFmpegAdapter implements MediaExtractor {
                 
                 if (trimmed.startsWith("http")) {
                     if (videoUrl == null) {
-                        videoUrl = trimmed; // First line is always the video stream
+                        videoUrl = trimmed; 
                     } else if (audioUrl == null) {
-                        audioUrl = trimmed; // Second line is the audio stream
+                        audioUrl = trimmed; 
                     }
                 }
             }
@@ -153,12 +148,10 @@ public class FFmpegAdapter implements MediaExtractor {
             throw new RuntimeException("Failed to extract stream URL via yt-dlp.");
         }
         
-        // If we found both, join them with our custom delimiter
         if (audioUrl != null) {
             return videoUrl + "|||" + audioUrl;
         }
         
-        // If it was a combined stream, just return the single URL
         return videoUrl;
     }
     
@@ -179,5 +172,17 @@ public class FFmpegAdapter implements MediaExtractor {
         if (process.exitValue() != 0) {
             throw new RuntimeException("FFmpeg process failed with exit code: " + process.exitValue());
         }
+    }
+
+    /**
+     * Helper method to dynamically generate the correct Referer header based on the CDN.
+     */
+    private String getDomainReferer(String url) {
+        if (url.contains("okcdn") || url.contains("ok.ru")) {
+            return "Referer: https://ok.ru/\r\n";
+        } else if (url.contains("googlevideo") || url.contains("youtube")) {
+            return "Referer: https://www.youtube.com/\r\n";
+        }
+        return "Referer: " + url + "\r\n"; 
     }
 }
