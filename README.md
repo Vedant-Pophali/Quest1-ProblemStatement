@@ -26,14 +26,15 @@ If you are running this locally without Docker, ensure you have the following in
 git clone https://github.com/yourusername/video-extraction-engine.git
 cd video-extraction-engine
 ```
-### 2. Start the Python ML Worker**
-Open a terminal, activate a virtual environment, and start the machine learning API:
+
+### 2. Start the Python ML Worker
+
+Open a terminal and start the machine learning API:
+
 ```bash
 cd worker-python
-python -m venv venv
-.\venv\Scripts\activate   # (On Mac/Linux use: source venv/bin/activate)
 pip install -r requirements.txt
-python start_server.py
+uvicorn start_server:app --host 0.0.0.0 --port 8000
 ```
 
 ### 3. Start the Java Orchestrator
