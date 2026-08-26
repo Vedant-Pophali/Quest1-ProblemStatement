@@ -63,13 +63,20 @@ document.getElementById('extraction-form').addEventListener('submit', async (e) 
                 } 
                 else if (payload.state === 'SUCCESS_AUDIO') {
                     document.getElementById('res-timestamp').textContent = payload.timestamp;
-                    document.getElementById('res-frame').textContent = 'N/A (Audio Match Only)';
+                    document.getElementById('res-frame').textContent = `${payload.frameNumber} (Audio Match Context)`;
                     document.getElementById('res-text').textContent = targetText;
                     
                     // Show Audio Fallback Message
                     const audioMsg = document.getElementById('res-audio-msg');
                     audioMsg.textContent = 'Target text was spoken, but did not appear visually on screen.';
                     audioMsg.classList.remove('hidden');
+                    
+                    // Render the contextual Base64 Image if FFmpeg successfully grabbed it
+                    if (payload.image) {
+                        const imgElement = document.getElementById('res-image');
+                        imgElement.src = `data:image/jpeg;base64,${payload.image}`;
+                        imgElement.classList.remove('hidden');
+                    }
                     
                     resultPanel.classList.remove('hidden');
                 }

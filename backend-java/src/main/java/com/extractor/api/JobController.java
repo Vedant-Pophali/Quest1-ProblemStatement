@@ -8,6 +8,7 @@ import io.javalin.http.Context;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.List;
 import java.util.UUID;
 
 public class JobController {
@@ -57,7 +58,22 @@ public class JobController {
             else if (result.audioTimestamp().isPresent()) {
                 double rawSeconds = result.audioTimestamp().get();
                 String formattedTime = formatTimestamp(rawSeconds);
-                liveUpdateSender.sendAudioSuccess(jobId, formattedTime);
+                int frameNumber = metadata.calculateFrameNumber(rawSeconds);
+                String base64Img = null;
+
+                liveUpdateSender.sendUpdate(jobId, "AUDIO_EXTRACTING_FRAME", "Fetching visual context for audio match...");
+                
+                try {
+                    // Extract exactly 1 frame at the exact audio timestamp
+                    List<String> frames = fFmpegAdapter.extractVisualFrames(rawUrl, rawSeconds, rawSeconds + 1.0, 1.0);
+                    if (!frames.isEmpty()) {
+                        base64Img = com.extractor.util.ImageEncoder.encodeToBase64(frames.getFirst());
+                    }
+                } catch (Exception e) {
+                    log.warn("Could not extract fallback image for audio match.", e);
+                }
+
+                liveUpdateSender.sendAudioSuccess(jobId, formattedTime, frameNumber, base64Img);
             } 
             // PRIORITY 3: Total Failure
             else {

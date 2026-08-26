@@ -20,6 +20,7 @@ public class LiveUpdateSender {
             log.info("SSE Client disconnected for Job: {}", jobId);
         });
     }
+    
     /**
      * Broadcasts state changes or log messages directly to the browser.
      */
@@ -30,6 +31,7 @@ public class LiveUpdateSender {
             client.sendEvent("job-update", jsonPayload);
         }
     }
+    
     /**
      * Broadcasts a successful visual match payload containing the Base64 image.
      */
@@ -44,13 +46,19 @@ public class LiveUpdateSender {
             client.sendEvent("job-update", jsonPayload);
         }
     }
-    // Add this beneath your sendVisualSuccess method
-    public void sendAudioSuccess(String jobId, String formattedTimestamp) {
+    
+    /**
+     * Broadcasts a successful audio match with a fallback context frame.
+     */
+    public void sendAudioSuccess(String jobId, String formattedTimestamp, int frameNumber, String base64Image) {
         SseClient client = clients.get(jobId);
         if (client != null) {
+            // Handle null images safely if FFmpeg fails to grab the context frame
+            String imageVal = (base64Image != null) ? "\"" + base64Image + "\"" : "null";
+            
             String jsonPayload = String.format(
-                "{\"state\":\"SUCCESS_AUDIO\", \"message\":\"Text not found visually. Audio match located.\", \"timestamp\":\"%s\"}",
-                formattedTimestamp
+                "{\"state\":\"SUCCESS_AUDIO\", \"message\":\"Text not found visually. Audio match located.\", \"timestamp\":\"%s\", \"frameNumber\":%d, \"image\":%s}",
+                formattedTimestamp, frameNumber, imageVal
             );
             client.sendEvent("job-update", jsonPayload);
         }
