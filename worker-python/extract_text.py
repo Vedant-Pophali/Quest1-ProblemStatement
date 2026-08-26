@@ -1,4 +1,5 @@
 import logging
+import re
 from rapidocr_onnxruntime import RapidOCR
 from thefuzz import fuzz
 from clean_image import preprocess_for_ocr
@@ -9,37 +10,74 @@ logger = logging.getLogger(__name__)
 logger.info("Loading RapidOCR ONNX model...")
 ocr = RapidOCR()
 
+def normalize_text(text: str) -> str:
+    """Removes all punctuation and special characters for robust matching."""
+    return re.sub(r'[^\w\s]', '', text).strip().lower()
+
 def analyze_frame_text(image_path: str, target_text: str, fuzzy_threshold: int = 85) -> dict:
     """
-    Cleans the image, runs RapidOCR, concatenates all text found on the screen,
-    and fuzzy matches the combined text against the target using token arrays.
+    Cleans the image, runs RapidOCR, concatenates detected text lines,
+    and performs sequential substring matching to eliminate false positives.
     """
     try:
         cleaned_image_matrix = preprocess_for_ocr(image_path)
         result, _ = ocr(cleaned_image_matrix)
 
-        if result is None:
+        if not result:
             return None
 
-        # Aggregate all detected text on the entire screen into one string
-        screen_text_fragments = [detection[1] for detection in result]
-        full_screen_text = " ".join(screen_text_fragments)
+        # 1. Collect all detected text lines
+        lines = [detection[1].strip() for detection in result if detection[1].strip()]
+        if not lines:
+            return None
 
-        target_lower = target_text.lower()
-        screen_lower = full_screen_text.lower()
+        target_clean = normalize_text(target_text)
+        full_screen_clean = normalize_text(" ".join(lines))
 
-        # token_set_ratio ignores exact ordering and is highly resilient to OCR typos
-        score_partial = fuzz.partial_ratio(target_lower, screen_lower)
-        score_token = fuzz.token_set_ratio(target_lower, screen_lower)
-        score = max(score_partial, score_token)
+        # 2. Check each line individually first (direct hit)
+        for detection in result:
+            box, line_text, conf = detection
+            line_clean = normalize_text(line_text)
+            
+            # Ratio checks on specific text block
+            ratio = fuzz.ratio(target_clean, line_clean)
+            partial = fuzz.partial_ratio(target_clean, line_clean)
+            
+            if ratio >= fuzzy_threshold or (len(line_clean) >= len(target_clean) * 0.8 and partial >= fuzzy_threshold):
+                logger.info(f"Direct visual match found on line! Score: {max(ratio, partial)}, Line: '{line_text}'")
+                return {
+                    "extractedText": line_text,
+                    "boundingBox": box,
+                    "ocrConfidence": float(conf) if conf is not None else 1.0,
+                    "fuzzyScore": float(max(ratio, partial))
+                }
 
-        if score >= fuzzy_threshold:
-            logger.info(f"Visual match found! Score: {score}, Screen Text: '{full_screen_text}'")
+        # 3. Aggregated Screen Match (handles multi-line text / kinetic typography)
+        # partial_ratio requires contiguous character/word alignments
+        score_partial = fuzz.partial_ratio(target_clean, full_screen_clean)
+
+        # Sliding window over words in full_screen_text matching target word length
+        target_words = target_clean.split()
+        target_word_len = len(target_words)
+        screen_words = full_screen_clean.split()
+
+        max_window_score = 0
+        if len(screen_words) >= target_word_len:
+            for i in range(len(screen_words) - target_word_len + 1):
+                window = " ".join(screen_words[i : i + target_word_len])
+                window_score = fuzz.ratio(target_clean, window)
+                if window_score > max_window_score:
+                    max_window_score = window_score
+
+        best_score = max(score_partial if len(full_screen_clean) >= len(target_clean) * 0.7 else 0, max_window_score)
+
+        if best_score >= fuzzy_threshold:
+            logger.info(f"Aggregated visual match found! Score: {best_score}, Screen Text: '{full_screen_clean}'")
             return {
-                "extractedText": full_screen_text,
+                "extractedText": full_screen_clean, # Return the clean sequence that matched
                 "boundingBox": result[0][0] if len(result) > 0 else [],
-                "ocrConfidence": 1.0, 
-                "fuzzyScore": float(score)
+                "ocrConfidence": 1.0,
+                "fuzzyScore": float(best_score)
             }
 
         return None

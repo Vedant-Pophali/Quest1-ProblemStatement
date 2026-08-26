@@ -1,5 +1,4 @@
 package com.extractor.infrastructure;
-
 import com.extractor.core.TextRecognizer;
 import com.extractor.model.FrameResult;
 import com.fasterxml.jackson.databind.JsonNode;

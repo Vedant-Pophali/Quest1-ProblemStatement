@@ -11,9 +11,7 @@ import com.extractor.infrastructure.PythonOcrClient;
 import com.extractor.model.FrameResult;
 import io.javalin.Javalin;
 import io.javalin.http.staticfiles.Location;
-
 import java.util.Optional;
-
 public class App {
     public static void main(String[] args) {
         // 1. Initialize Infrastructure (Adapters & Resilience)

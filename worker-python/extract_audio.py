@@ -1,4 +1,5 @@
 import logging
+import re
 from faster_whisper import WhisperModel
 from thefuzz import fuzz
 
@@ -8,35 +9,49 @@ logger = logging.getLogger(__name__)
 logger.info("Loading Whisper base.en model into CPU memory...")
 audio_model = WhisperModel("base.en", device="cpu", compute_type="int8")
 
+def normalize_text(text: str) -> str:
+    """Removes all punctuation and special characters for robust matching."""
+    return re.sub(r'[^\w\s]', '', text).strip().lower()
+
 def find_target_timestamp(audio_path: str, target_text: str, fuzzy_threshold: int = 85) -> float:
     """
-    Transcribes the audio track and searches for the target text using fuzzy matching.
+    Transcribes the audio track and searches for the target text using sequence-preserving matching.
     Utilizes word_timestamps to pinpoint the exact start of the dialogue.
     """
     try:
         segments, info = audio_model.transcribe(audio_path, word_timestamps=True)
         
-        target_lower = target_text.lower()
-        target_words = target_lower.split()
+        target_clean = normalize_text(target_text)
+        target_words = target_clean.split()
         if not target_words:
             return None
             
         target_first_word = target_words[0]
 
         for segment in segments:
-            # Combine algorithms: Token Set is better for out-of-order words/noise
-            score_partial = fuzz.partial_ratio(target_lower, segment.text.lower())
-            score_token = fuzz.token_set_ratio(target_lower, segment.text.lower())
-            score = max(score_partial, score_token)
+            seg_clean = normalize_text(segment.text)
+            
+            # THE FIX: Prevent catastrophic false positives from short hallucinations!
+            # If Whisper transcribes a breath as "I", partial_ratio returns 100 
+            # because "i" is a perfect substring of our target. 
+            # We enforce that the audio segment must contain at least 50% of the target's length.
+            if len(seg_clean) < len(target_clean) * 0.5:
+                score_partial = 0
+            else:
+                score_partial = fuzz.partial_ratio(target_clean, seg_clean)
+            
+            # 2. Segment-level ratio (exact match)
+            score_exact = fuzz.ratio(target_clean, seg_clean)
+            
+            score = max(score_partial, score_exact)
             
             if score >= fuzzy_threshold:
                 exact_start = segment.start
                 
-                # Dive into the word-level timestamps to find the exact start of the phrase
-                if getattr(segment, 'words', None):
+                # Check word timestamps to get exact onset
+                if getattr(segment, 'words', None) and segment.words:
                     for word_obj in segment.words:
-                        clean_word = word_obj.word.lower().strip()
-                        # If we find the first word of our target, snap the timestamp to it
+                        clean_word = normalize_text(word_obj.word)
                         if fuzz.ratio(target_first_word, clean_word) >= 80:
                             exact_start = word_obj.start
                             break

@@ -17,17 +17,15 @@ import java.util.stream.Collectors;
 public class FFmpegAdapter implements MediaExtractor {
     private static final Logger log = LoggerFactory.getLogger(FFmpegAdapter.class);
     
-    // Increased to 600 seconds (10 mins) to allow full movie chunk processing over HLS
     private static final int TIMEOUT_SECONDS = 600;
-    
-    // Standard User-Agent to bypass CDN 403 Forbidden blocks
     private static final String USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
 
     @Override
     public StreamMetadata getMetadata(String streamUrl) throws Exception {
         ProcessBuilder pb = new ProcessBuilder(
                 "ffprobe", 
-                "-user_agent", USER_AGENT, // Anti-bot spoofing
+                "-user_agent", USER_AGENT,
+                "-headers", "Referer: https://ok.ru/\r\n",
                 "-v", "error",
                 "-select_streams", "v:0",
                 "-show_entries", "stream=r_frame_rate,duration",
@@ -40,6 +38,10 @@ public class FFmpegAdapter implements MediaExtractor {
         process.waitFor(10, TimeUnit.SECONDS);
 
         try {
+            if (output.isBlank() || !output.contains(",")) {
+                throw new IllegalArgumentException("ffprobe returned empty or invalid data: " + output);
+            }
+
             String[] parts = output.split(",");
             String[] fpsParts = parts[0].split("/");
             double fps = Double.parseDouble(fpsParts[0]) / Double.parseDouble(fpsParts[1]);
@@ -60,7 +62,7 @@ public class FFmpegAdapter implements MediaExtractor {
         ProcessBuilder pb = new ProcessBuilder(
                 "ffmpeg", "-y", 
                 "-user_agent", USER_AGENT,
-                // Make HTTP connections highly resilient for ok.ru .ts chunks
+                "-headers", "Referer: https://ok.ru/\r\n",
                 "-reconnect", "1", "-reconnect_streamed", "1", "-reconnect_delay_max", "5",
                 "-ss", String.valueOf(startTime),
                 "-t", String.valueOf(duration),
@@ -80,8 +82,8 @@ public class FFmpegAdapter implements MediaExtractor {
 
         ProcessBuilder pb = new ProcessBuilder(
                 "ffmpeg", "-y",
-                "-user_agent", USER_AGENT, // Anti-bot spoofing
-                // Make HTTP connections highly resilient for ok.ru .ts chunks
+                "-user_agent", USER_AGENT,
+                "-headers", "Referer: https://ok.ru/\r\n",
                 "-reconnect", "1", "-reconnect_streamed", "1", "-reconnect_delay_max", "5",
                 "-i", streamUrl, 
                 "-ss", String.valueOf(startTime),
@@ -98,11 +100,16 @@ public class FFmpegAdapter implements MediaExtractor {
         
         return Arrays.stream(files).map(File::getAbsolutePath).sorted().collect(Collectors.toList());
     }
-
+    
     @Override
     public String extractRawStreamUrl(String targetUrl) throws Exception {
-        // Prioritize MP4 to avoid fragmented HLS (.m3u8) 403 blocks
-        ProcessBuilder pb = new ProcessBuilder("yt-dlp", "-f", "best[ext=mp4]/best", "-g", targetUrl);
+        ProcessBuilder pb = new ProcessBuilder(
+                "python", "-m", "yt_dlp", 
+                "--no-check-certificate", 
+                // FIX: Force Python to use the exact same User-Agent as FFmpeg so the CDN signatures match!
+                "--user-agent", USER_AGENT, 
+                "-g", targetUrl
+        );
         pb.redirectErrorStream(true); 
         Process process = pb.start();
         String rawUrl = null;
@@ -110,19 +117,29 @@ public class FFmpegAdapter implements MediaExtractor {
         try (java.io.BufferedReader reader = new java.io.BufferedReader(new java.io.InputStreamReader(process.getInputStream()))) {
             String line;
             while ((line = reader.readLine()) != null) {
-                if (line.startsWith("http") && rawUrl == null) {
-                    rawUrl = line.trim();
+                log.info("[yt-dlp] {}", line); 
+                
+                String trimmed = line.trim();
+                if (trimmed.startsWith("http") && rawUrl == null) {
+                    rawUrl = trimmed;
                 }
             }
         }
         
-        if (!process.waitFor(60, TimeUnit.SECONDS) || process.exitValue() != 0 || rawUrl == null) {
+        boolean finished = process.waitFor(120, TimeUnit.SECONDS);
+        
+        if (!finished) {
             process.destroyForcibly();
+            throw new RuntimeException("yt-dlp process timed out after 120 seconds.");
+        }
+        
+        if (rawUrl == null) {
             throw new RuntimeException("Failed to extract stream URL via yt-dlp.");
         }
+        
         return rawUrl;
     }
-
+    
     private void executeProcess(ProcessBuilder pb) throws Exception {
         pb.redirectErrorStream(true); 
         Process process = pb.start();
