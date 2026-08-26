@@ -64,10 +64,14 @@ public class JobController {
                 liveUpdateSender.sendUpdate(jobId, "AUDIO_EXTRACTING_FRAME", "Fetching visual context for audio match...");
                 
                 try {
-                    // Extract exactly 1 frame at the exact audio timestamp
-                    List<String> frames = fFmpegAdapter.extractVisualFrames(rawUrl, rawSeconds, rawSeconds + 1.0, 1.0);
+                    // FIX: Rely on our bulletproof FFmpegAdapter so we don't get 403 Forbidden errors!
+                    // We extract a 1-second chunk at 5 FPS to mathematically guarantee FFmpeg 
+                    // doesn't skip the frame due to Variable Frame Rate (VFR) rounding errors.
+                    List<String> frames = fFmpegAdapter.extractVisualFrames(rawUrl, rawSeconds, rawSeconds + 1.0, 5.0);
+                    
                     if (!frames.isEmpty()) {
-                        base64Img = com.extractor.util.ImageEncoder.encodeToBase64(frames.getFirst());
+                        // Grab the very first frame of the dialogue!
+                        base64Img = com.extractor.util.ImageEncoder.encodeToBase64(frames.get(0)); 
                     }
                 } catch (Exception e) {
                     log.warn("Could not extract fallback image for audio match.", e);

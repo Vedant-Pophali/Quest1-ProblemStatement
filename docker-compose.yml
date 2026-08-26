@@ -1,0 +1,23 @@
+version: '3.8'
+
+services:
+  python-worker:
+    build: ./worker-python
+    container_name: ml-text-audio-worker
+    ports:
+      - "8000:8000"
+    restart: unless-stopped
+
+  java-backend:
+    build:
+      context: .
+      dockerfile: backend-java/Dockerfile
+    container_name: java-orchestrator
+    ports:
+      - "7070:7070"
+    environment:
+      # This dynamically routes the Java container to the Python container!
+      - PYTHON_SERVER_URL=http://python-worker:8000
+    depends_on:
+      - python-worker
+    restart: unless-stopped
