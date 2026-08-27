@@ -341,7 +341,173 @@ Job accepted. Assigned ID: 8f86c8ff-36e0-4742-bea6-abe726981e2b
 [SUCCESS_AUDIO] Text not found visually. Audio match located.
 Extraction Result
 Timestamp: 00:00:44.500
-
 Frame Number: N/A (Audio Match Only)
 Matched Text: You can't handle the truth
 Target text was spoken, but did not appear visually on screen.  
+
+Live Pipeline Status
+[8:44:35 AM] Initiating connection to Java orchestrator...
+[8:44:35 AM] Job accepted. Assigned ID: 6c24a468-a2f2-492a-8145-b8a98825f9be
+[8:44:37 AM] [INITIALIZING] Extracting raw stream URL from https://www.youtube.com/watch?v=mk3XycambgI
+[8:44:43 AM] [INITIALIZING] Fetching stream metadata via ffprobe...
+[8:44:43 AM] [AUDIO_SEARCH_RUNNING] Launching Audio Pointer and Coarse Visual Scan...
+[8:46:03 AM] [SUCCESS_AUDIO] Text not found visually. Audio match located.
+Extraction Result
+Timestamp: 00:01:09.540
+Frame Number: N/A (Audio Match Only)
+Matched Text: I have loved you for a thousand years
+Target text was spoken, but did not appear visually on screen.
+Why is this failing??
+
+
+Root Cause: A concise explanation (1-2 sentences) of why the 404 is happening
+Python Fix: The exact FastAPI route definition required to resolve the missing endpoint
+Java Check: A brief note on whether the Java HTTP client configuration needs adjustments
+Why is this happening
+
+Great
+The video is running fine for most of the cases
+Ill just run all the videos once in an order to recheck the authenticity
+
+Live Pipeline Status
+[12:34:30 PM] Initiating connection to Java orchestrator...
+[12:34:30 PM] Job accepted. Assigned ID: 5a981e61-038a-4f70-aa7e-a22c4153baf9
+[12:34:31 PM] [INITIALIZING] Extracting raw stream URL from https://www.youtube.com/watch?v=9FnO3igOkOk
+[12:34:40 PM] [INITIALIZING] Fetching stream metadata via ffprobe...
+[12:34:41 PM] [AUDIO_SEARCH_RUNNING] Launching Audio Pointer and Coarse Visual Scan...
+[12:35:57 PM] [SUCCESS_AUDIO] Text not found visually. Audio match located.
+Extraction Result
+Timestamp: 00:00:44.500
+Frame Number: N/A (Audio Match Only)
+Matched Text: You can't handle the truth
+Target text was spoken, but did not appear visually on screen.
+
+Live Pipeline Status
+[12:38:59 PM] Initiating connection to Java orchestrator...
+[12:38:59 PM] Job accepted. Assigned ID: 75b4da2c-8aed-4960-81c6-d147b5b72032
+[12:39:01 PM] [INITIALIZING] Extracting raw stream URL from https://www.youtube.com/watch?v=mk3XycambgI
+[12:39:08 PM] [INITIALIZING] Fetching stream metadata via ffprobe...
+[12:39:12 PM] [AUDIO_SEARCH_RUNNING] Launching Audio Pointer and Coarse Visual Scan...
+[12:40:37 PM] [SUCCESS_VISUAL] Visual match found!
+Extraction Result
+Timestamp: 00:01:09.000
+Frame Number: 2068
+Matched Text: I have loved you for a thousand years
+
+Video Stream URL
+ https://www.youtube.com/watch?v=dQw4w9WgXcQ
+Match Accuracy Threshold (%)
+85
+Target Dialogue
+My Mind Rebels at Stagnation
+Live Pipeline Status
+[12:50:29 PM] Initiating connection to Java orchestrator...
+[12:50:29 PM] Job accepted. Assigned ID: 51e0dd44-49fd-4d17-a3ae-3a3b48324ed6
+[12:50:31 PM] [INITIALIZING] Extracting raw stream URL from https://www.youtube.com/watch?v=dQw4w9WgXcQ
+[12:50:39 PM] [INITIALIZING] Fetching stream metadata via ffprobe...
+[12:50:42 PM] [AUDIO_SEARCH_RUNNING] Launching Audio Pointer and Coarse Visual Scan...
+[12:55:23 PM] [TEXT_NOT_FOUND] Search exhausted. Text did not appear visually or in audio.
+
+
+Video Stream URL
+https://www.youtube.com/watch?v=c2iFiaPr5dY
+Match Accuracy Threshold (%)
+85
+Target Dialogue
+I dont have it right now
+Start Extraction
+Live Pipeline Status
+[1:48:02 PM] Initiating connection to Java orchestrator...
+[1:48:02 PM] Job accepted. Assigned ID: eb16e41e-9ee6-4955-8e8f-9b3ae99bd7e6
+[1:48:03 PM] [INITIALIZING] Extracting raw stream URL from https://www.youtube.com/watch?v=c2iFiaPr5dY
+[1:48:11 PM] [INITIALIZING] Fetching stream metadata via ffprobe...
+[1:48:13 PM] [AUDIO_SEARCH_RUNNING] Launching Audio Pointer and Coarse Visual Scan...
+[1:50:17 PM] [SUCCESS_VISUAL] Visual match found!
+Extraction Result
+Timestamp: 00:02:08.000
+Frame Number: 3200
+Matched Text: I dont have it right now
+
+Well
+This makes the problem pretty much completed
+[5:59:44 PM] Initiating connection to Java orchestrator...
+[5:59:44 PM] Job accepted. Assigned ID: f98bd541-7564-46ac-9735-28c1b5186903
+[5:59:46 PM] [INITIALIZING] Extracting raw stream URL from https://ok.ru/video/248244667877
+[5:59:53 PM] [INITIALIZING] Fetching stream metadata via ffprobe...
+[5:59:57 PM] [AUDIO_SEARCH_RUNNING] Launching Audio Pointer and Coarse Visual Scan...
+[6:07:00 PM] [SUCCESS_AUDIO] Text not found visually. Audio match located.
+Extraction Result
+Timestamp: 00:05:24.700
+Frame Number: N/A (Audio Match Only)
+Matched Text: My mind rebels at stagnation
+Target text was spoken, but did not appear visually on screen. 
+Copy?
+
+Help me diagnoise this
+'C:\WINDOWS\TEMP\frames_62e2dc6d-6bcd-41cd-9700-ad39fbe79351_13827954438069901697\frame_%04d.jpg':
+  Metadata:
+    encoder         : Lavf62.3.100
+  Stream #0:0(und): Video: mjpeg, yuv420p(pc, bt709, progressive), 1920x1080, q=2-31, 200 kb/s, 30 fps, 30 tbn (default)
+    Metadata:
+      encoder         : Lavc62.11.100 mjpeg
+      variant_bitrate : 0
+      compatible_brands: iso6mp41
+      handler_name    : ISO Media file produced by Google Inc. Created on: 08/26/2026.
+      vendor_id       : [0][0][0][0]
+      major_brand     : dash
+      minor_version   : 0
+      creation_time   : 2026-08-26T13:14:25.000000Z
+    Side data:
+      cpb: bitrate max/min/avg: 0/0/200000 buffer size: 0 vbv_delay: N/A
+
+*Shared file code files to provide better context here*
+
+But there is a dialogue You cant handle the truth
+https://www.youtube.com/watch?v=9FnO3igOkOk
+at time stamp at 44 second
+Which its unable to flag the way its supposed to
+Check 
+
+A two URL approach is what was causing the issue
+Intresting
+But what if some URLs are desingned to be in a 2 type manner - one for the audio , other for the video??
+
+Copy that
+Help me fix this now
+[] INFO com.extractor.infrastructure.FFmpegAdapter - [yt-dlp] ERROR: [youtube] 9FnO3igOkOk: Requested format is not available. Use --list-formats for a list of available formats
+[] ERROR com.extractor.api.JobController - Job 231fbb02-9ea7-47db-89ab-832695a181d1 failed critically.
+java.lang.RuntimeException: Failed to extract stream URL via yt-dlp.
+        at com.extractor.infrastructure.FFmpegAdapter.extractRawStreamUrl(FFmpegAdapter.java:138)
+        at com.extractor.api.JobController.processJob(JobController.java:40)
+        at com.extractor.api.JobController.lambda$0(JobController.java:30)
+        at java.base/java.lang.VirtualThread.run(VirtualThread.java:329)
+
+
+What does this mean
+[8:31:13 PM] Initiating connection to Java orchestrator...
+[8:31:14 PM] Job accepted. Assigned ID: 3fbe1211-3507-48f8-9c74-eb274e60d9d2
+[8:31:15 PM] [INITIALIZING] Extracting raw stream URL from https://ok.ru/video/248244667877
+[8:31:22 PM] [SYSTEM_ERROR] Pipeline crashed: Failed to extract stream URL via yt-dlp.
+
+Lets build this feature
+where we display the image of that instance when the audio matches, when there is no video validation
+copy??
+*Shared files to give context*
+
+NOW I NEED TO KNWO ALL THE DEPENDENCIES I HAVE USED HERE IN THIS PROJECT
+HOW DO I CHECK FOR IT AND Validate by Req.txt
+SO THAT IT DOES NOT casue an issue on someone else's pc
+Lets DOCKERIZE IT
+
+
+Now help me document
+Explain more about CLAHE FOR THE IMAGE EXTRACION??
+What is benifits of using a polyglot architecture - point wise plz ( we discussed this before)
+A breif of the design patterns we used
+
+OK
+Now Lets Get the README.md file in place
+Include the procedures and requiremnts and other basic details
+Dont dive in detail regarding the logical aspects
+I have a different file allocated for it
+
